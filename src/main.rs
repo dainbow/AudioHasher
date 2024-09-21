@@ -50,10 +50,10 @@ fn main() {
             for question in question_xpath.apply(&xpath_item_tree).unwrap() {
                 let audio_xpath =
                     xpath::parse("/div[2]/div/div[1]/div/div/div/div/div/div[4]/a").unwrap();
-
-                if let Ok(audio_entry) =
-                    audio_xpath.apply_to_item(&xpath_item_tree, question.clone())
-                {
+                let audio_entry = audio_xpath
+                    .apply_to_item(&xpath_item_tree, question.clone())
+                    .unwrap();
+                if !audio_entry.is_empty() {
                     let audio_name: String = audio_entry[0]
                         .extract_as_node()
                         .extract_as_tree_node()
@@ -76,7 +76,7 @@ fn main() {
 
                     let answer_section_xpath = xpath::parse("/div[2]/div/div[2]/p").unwrap();
 
-                    for section in answer_section_xpath
+                    'sections: for section in answer_section_xpath
                         .apply_to_item(&xpath_item_tree, question.clone())
                         .unwrap()
                     {
@@ -90,7 +90,7 @@ fn main() {
                                 .extract_as_element_node()
                                 .get_attribute("class")
                             {
-                                answers.0.entry(audio_hash.clone()).or_insert(vec![]).push((
+                                answers.0.entry(audio_hash).or_insert(vec![]).push((
                                     if answer_type.contains("incorrect") {
                                         "WRONG".to_owned()
                                     } else {
@@ -102,6 +102,8 @@ fn main() {
                                         .to_owned()
                                         .replace("&nbsp;", ""),
                                 ));
+
+                                break 'sections;
                             }
                         }
                     }
