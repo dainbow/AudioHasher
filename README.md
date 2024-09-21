@@ -1,0 +1,2 @@
+- Command `audio_answers generate` takes all mp3 files in the current directory and creates `answers.json` file with map of audio hash to its name (allows vector of file names with equal hash if same audio used in different questions)
+- Command `audio_answers solve` takes `answers.json` file from the current directory and prints for every mp3 file in the current directory all matches from the answers database
