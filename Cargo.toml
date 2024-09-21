@@ -9,4 +9,5 @@ clap = { version = "4.5.18", features = ["derive"] }
 file-hashing = "0.1.2"
 serde = { version = "1.0.210", features = ["derive"] }
 serde_json = "1.0.128"
+skyscraper = "0.6.4"
 
