@@ -44,66 +44,65 @@ fn main() {
             let document = html::parse(&contents).unwrap();
             let xpath_item_tree = XpathItemTree::from(&document);
 
-            let xpath =
+            let question_xpath =
                 xpath::parse("/html/body/div[2]/div[2]/div/div/section[1]/div[1]/form/div/div")
                     .unwrap();
-            let questions_amount = xpath.apply(&xpath_item_tree).unwrap().len();
+            for question in question_xpath.apply(&xpath_item_tree).unwrap() {
+                let audio_xpath =
+                    xpath::parse("/div[2]/div/div[1]/div/div/div/div/div/div[4]/a").unwrap();
 
-            for i in 1..questions_amount {
-                let audio_path = format!("/html/body/div[2]/div[2]/div/div/section[1]/div[1]/form/div/div[{}]/div[2]/div/div[1]/div/div/div/div/div/div[4]/a", i);
-                let xpath = xpath::parse(&audio_path).unwrap();
-                let audio_name: String = xpath.apply(&xpath_item_tree).unwrap()[0]
-                    .extract_as_node()
-                    .extract_as_tree_node()
-                    .data
-                    .extract_as_element_node()
-                    .get_attribute("href")
-                    .unwrap()
-                    .chars()
-                    .take_while(|c| *c != '?')
-                    .collect();
-                let audio_name = audio_name
-                    .split('/')
-                    .last()
-                    .unwrap()
-                    .to_owned()
-                    .replace("%20", " ");
-                let mut hash = Blake2s256::new();
+                if let Ok(audio_entry) =
+                    audio_xpath.apply_to_item(&xpath_item_tree, question.clone())
+                {
+                    let audio_name: String = audio_entry[0]
+                        .extract_as_node()
+                        .extract_as_tree_node()
+                        .data
+                        .extract_as_element_node()
+                        .get_attribute("href")
+                        .unwrap()
+                        .chars()
+                        .take_while(|c| *c != '?')
+                        .collect();
 
-                let audio_hash = get_hash_file(&audio_name, &mut hash).unwrap();
-                let prev_vec = answers.0.entry(audio_hash).or_insert(vec![]);
+                    let audio_name = audio_name
+                        .split('/')
+                        .last()
+                        .unwrap()
+                        .to_owned()
+                        .replace("%20", " ");
 
-                let xpath =
-                xpath::parse(&format!("/html/body/div[2]/div[2]/div/div/section[1]/div[1]/form/div/div[{}]/div[2]/div/div[2]/p", i))
-                    .unwrap();
-                let answer_sections_amount = xpath.apply(&xpath_item_tree).unwrap().len();
+                    let audio_hash = get_hash_file(&audio_name, &mut Blake2s256::new()).unwrap();
 
-                for section in 1..=answer_sections_amount {
-                    let xpath =
-                        xpath::parse(&format!("/html/body/div[2]/div[2]/div/div/section[1]/div[1]/form/div/div[{}]/div[2]/div/div[2]/p[{}]/span", i, section))
-                            .unwrap();
-                    let answers_amount = xpath.apply(&xpath_item_tree).unwrap().len();
-                    for ans in 1..=answers_amount {
-                        let answers_path = format!("/html/body/div[2]/div[2]/div/div/section[1]/div[1]/form/div/div[{}]/div[2]/div/div[2]/p[{}]/span[{}]", i, section, ans);
-                        let xpath = xpath::parse(&answers_path)
-                            .unwrap()
-                            .apply(&xpath_item_tree)
-                            .unwrap();
-                        let res = xpath[0].extract_as_node().extract_as_tree_node();
-                        if let Some(answer_type) =
-                            res.data.extract_as_element_node().get_attribute("class")
-                        {
-                            prev_vec.push((
-                                if answer_type.contains("incorrect") {
-                                    "WRONG".to_owned()
-                                } else {
-                                    "OK".to_owned()
-                                },
-                                res.text(&xpath_item_tree)
-                                    .unwrap()
-                                    .to_owned()
-                                    .replace("&nbsp;", ""),
-                            ));
+                    let answer_section_xpath = xpath::parse("/div[2]/div/div[2]/p").unwrap();
+
+                    for section in answer_section_xpath
+                        .apply_to_item(&xpath_item_tree, question.clone())
+                        .unwrap()
+                    {
+                        let span_xpath = xpath::parse("/span").unwrap();
+
+                        for answer in span_xpath.apply_to_item(&xpath_item_tree, section).unwrap() {
+                            let answer_entry = answer.extract_as_node().extract_as_tree_node();
+
+                            if let Some(answer_type) = answer_entry
+                                .data
+                                .extract_as_element_node()
+                                .get_attribute("class")
+                            {
+                                answers.0.entry(audio_hash.clone()).or_insert(vec![]).push((
+                                    if answer_type.contains("incorrect") {
+                                        "WRONG".to_owned()
+                                    } else {
+                                        "OK".to_owned()
+                                    },
+                                    answer_entry
+                                        .text(&xpath_item_tree)
+                                        .unwrap()
+                                        .to_owned()
+                                        .replace("&nbsp;", ""),
+                                ));
+                            }
                         }
                     }
                 }

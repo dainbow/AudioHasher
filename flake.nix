@@ -21,12 +21,7 @@
             (rust-bin.stable.latest.default.override {
               extensions = ["rust-src"];
             })
-
-            pkgs.openssl
-            pkgs.pkg-config
           ];
-
-          PKG_CONFIG_PATH = "${pkgs.openssl.dev}/lib/pkgconfig";
         };
       }
     );
